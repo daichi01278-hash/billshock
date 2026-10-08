@@ -24,7 +24,17 @@ jobs:
       - run: npm ci
       - name: Check tag matches package.json
         run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
-      - run: npm publish --access public --loglevel verbose
+      # Uses NPM_TOKEN while that secret exists; once it is deleted, npm falls back to
+      # Trusted Publishing (OIDC). The npm-side config must match: user daichi01278-hash,
+      # repo billshock, workflow release.yml, no environment.
+      - name: Publish to npm
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          fi
+          npm publish --access public --provenance --loglevel verbose
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Move major tag
         run: |
           major="${GITHUB_REF_NAME%%.*}"
