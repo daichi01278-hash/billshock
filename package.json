@@ -1,0 +1,48 @@
+{
+  "name": "billshock",
+  "version": "0.1.0",
+  "description": "Get alerted before a surprise OpenAI / Anthropic / Vercel bill. Spend anomaly alerts that run in your own GitHub Actions.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daichi01278-hash/billshock.git"
+  },
+  "homepage": "https://github.com/daichi01278-hash/billshock#readme",
+  "bugs": "https://github.com/daichi01278-hash/billshock/issues",
+  "type": "module",
+  "bin": {
+    "billshock": "dist/billshock.cjs"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "esbuild src/cli.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/billshock.cjs --define:__VERSION__=\\\"$npm_package_version\\\" --banner:js='#!/usr/bin/env node'",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "openai",
+    "anthropic",
+    "vercel",
+    "billing",
+    "cost",
+    "spend",
+    "alert",
+    "anomaly",
+    "finops",
+    "github-action"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.7",
+    "yaml": "^2.9.1"
+  }
+}

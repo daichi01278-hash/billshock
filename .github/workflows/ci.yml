@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      # The Action runs the committed bundle, so it must match the source.
+      - name: Check dist is up to date
+        if: matrix.node == 20
+        run: git diff --exit-code -- dist || (echo "::error::dist/ is stale; run npm run build and commit" && exit 1)

@@ -1,0 +1,13 @@
+{
+  "data": [
+    {
+      "starting_at": "2025-10-06T00:00:00Z",
+      "ending_at": "2025-10-07T00:00:00Z",
+      "results": [
+        { "amount": "123.78912", "currency": "USD", "description": null, "workspace_id": null, "cost_type": null, "model": null, "service_tier": null, "token_type": null, "context_window": null, "inference_geo": null }
+      ]
+    }
+  ],
+  "has_more": true,
+  "next_page": "page_MjAyNS0xMC0wN1QwMDowMDowMFo="
+}

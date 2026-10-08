@@ -1,0 +1,38 @@
+name: billshock
+description: Alert on OpenAI / Anthropic / Vercel spend anomalies before the invoice arrives.
+branding:
+  icon: alert-triangle
+  color: red
+
+inputs:
+  config:
+    description: Path to billshock.yml
+    default: billshock.yml
+  dry-run:
+    description: Print alerts without notifying or recording them
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    # Remembers which alerts were already sent so an hourly schedule reports each one once.
+    - uses: actions/cache/restore@v4
+      with:
+        path: .billshock
+        key: billshock-state-${{ github.run_id }}
+        restore-keys: billshock-state-
+
+    - shell: bash
+      env:
+        BILLSHOCK_CONFIG: ${{ inputs.config }}
+        BILLSHOCK_DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        args=(check --config "$BILLSHOCK_CONFIG")
+        if [ "$BILLSHOCK_DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+        node "$GITHUB_ACTION_PATH/dist/billshock.cjs" "${args[@]}"
+
+    - uses: actions/cache/save@v4
+      if: always()
+      with:
+        path: .billshock
+        key: billshock-state-${{ github.run_id }}
