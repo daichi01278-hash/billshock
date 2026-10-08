@@ -7558,10 +7558,11 @@ function parseVercelCharges(jsonl, into = /* @__PURE__ */ new Map()) {
   }
   return into;
 }
-async function fetchVercel(token, teamId, window, fetchFn = fetch) {
+async function fetchVercel(token, teamId, window, fetchFn = fetch, now = /* @__PURE__ */ new Date()) {
+  const to = window.end < now ? window.end : now;
   const url = new URL("https://api.vercel.com/v1/billing/charges");
   url.searchParams.set("from", window.start.toISOString());
-  url.searchParams.set("to", window.end.toISOString());
+  url.searchParams.set("to", to.toISOString());
   if (teamId) url.searchParams.set("teamId", teamId);
   const body = await request(NAME3, fetchFn, url.toString(), { Authorization: `Bearer ${token}` });
   return parseVercelCharges(body);
@@ -7578,10 +7579,10 @@ var usd = (n) => `$${n.toFixed(2)}`;
 function spendOn(daily, key) {
   return daily.get(key) ?? 0;
 }
-function trailingAverage(daily, beforeKey, days) {
+function trailingAverage(daily, beforeKey, days2) {
   let sum = 0;
-  for (let i = 1; i <= days; i++) sum += spendOn(daily, addDays(beforeKey, -i));
-  return sum / days;
+  for (let i = 1; i <= days2; i++) sum += spendOn(daily, addDays(beforeKey, -i));
+  return sum / days2;
 }
 function monthToDate(daily, now) {
   const from = dateKey(startOfUtcMonth(now));
@@ -7597,9 +7598,9 @@ function projectMonthEnd(daily, now) {
 function evaluate(scope, daily, rules, now) {
   const alerts = [];
   const today = dateKey(now);
-  const days = [addDays(today, -1), today];
+  const days2 = [addDays(today, -1), today];
   if (rules.dailyCap !== void 0) {
-    for (const d of days) {
+    for (const d of days2) {
       const spent = spendOn(daily, d);
       if (spent > rules.dailyCap) {
         alerts.push({
@@ -7614,7 +7615,7 @@ function evaluate(scope, daily, rules, now) {
   if (rules.spikeMultiplier !== void 0) {
     const baselineDays = rules.spikeBaselineDays ?? DEFAULT_RULES.spikeBaselineDays;
     const minAmount = rules.spikeMinAmount ?? DEFAULT_RULES.spikeMinAmount;
-    for (const d of days) {
+    for (const d of days2) {
       const spent = spendOn(daily, d);
       const baseline = trailingAverage(daily, d, baselineDays);
       if (spent >= minAmount && spent > baseline * rules.spikeMultiplier) {
@@ -7690,14 +7691,14 @@ function fetchWindow(config, now) {
     end: /* @__PURE__ */ new Date(`${addDays(today, 1)}T00:00:00Z`)
   };
 }
-function fetchProvider(p, window, fetchFn) {
+function fetchProvider(p, window, fetchFn, now) {
   switch (p.name) {
     case "openai":
       return fetchOpenAI(p.credential, window, fetchFn);
     case "anthropic":
       return fetchAnthropic(p.credential, window, fetchFn);
     case "vercel":
-      return fetchVercel(p.credential, p.teamId, window, fetchFn);
+      return fetchVercel(p.credential, p.teamId, window, fetchFn, now);
   }
 }
 function summarize(scope, daily, rules, now) {
@@ -7747,7 +7748,7 @@ async function runCheck(opts) {
     errors.push("no provider has credentials; set the env vars referenced in your config");
   }
   const window = fetchWindow(config, now);
-  const settled = await Promise.allSettled(active.map((p) => fetchProvider(p, window, fetchFn)));
+  const settled = await Promise.allSettled(active.map((p) => fetchProvider(p, window, fetchFn, now)));
   const alerts = [];
   const summary = [];
   const fetched = [];
@@ -7872,9 +7873,97 @@ function loadConfig(path, env = process.env) {
   return parseConfig(text, env);
 }
 
-// src/init.ts
+// src/demo.ts
 var import_node_fs4 = require("node:fs");
+var import_node_os = require("node:os");
 var import_node_path2 = require("node:path");
+var DEMO_CONFIG = `
+providers:
+  openai: { apiKey: demo }
+  anthropic: { apiKey: demo }
+  vercel: { token: demo }
+total:
+  monthlyBudget: 1000
+`;
+function wobble(key, provider) {
+  let h = 0;
+  for (const c of key + provider) h = h * 31 + c.charCodeAt(0) >>> 0;
+  return 0.8 + h % 400 / 1e3;
+}
+function demoSpend(provider, key, today) {
+  const yesterday = addDays(today, -1);
+  const base = { openai: 4.9, anthropic: 5.7, vercel: 0.42 }[provider];
+  if (key === yesterday && provider === "openai") return 41.2;
+  if (key === yesterday && provider === "vercel") return 659.08;
+  const partial = key === today ? 0.35 : 1;
+  return Math.round(base * wobble(key, provider) * partial * 100) / 100;
+}
+function days(start, endExclusive) {
+  const out = [];
+  for (let d = start; d < endExclusive; d = addDays(d, 1)) out.push(d);
+  return out;
+}
+function demoFetch(now) {
+  const today = dateKey(now);
+  return (async (input) => {
+    const url = new URL(input);
+    if (url.hostname === "api.openai.com") {
+      const start = dateKey(new Date(Number(url.searchParams.get("start_time")) * 1e3));
+      const end = dateKey(new Date(Number(url.searchParams.get("end_time")) * 1e3));
+      const data = days(start, end).map((d) => ({
+        object: "bucket",
+        start_time: Date.parse(`${d}T00:00:00Z`) / 1e3,
+        end_time: Date.parse(`${addDays(d, 1)}T00:00:00Z`) / 1e3,
+        results: [{ object: "organization.costs.result", amount: { value: demoSpend("openai", d, today), currency: "usd" } }]
+      }));
+      return new Response(JSON.stringify({ object: "page", data, has_more: false, next_page: null }));
+    }
+    if (url.hostname === "api.anthropic.com") {
+      const start = url.searchParams.get("starting_at").slice(0, 10);
+      const end = url.searchParams.get("ending_at").slice(0, 10);
+      const data = days(start, end).map((d) => ({
+        starting_at: `${d}T00:00:00Z`,
+        ending_at: `${addDays(d, 1)}T00:00:00Z`,
+        results: [{ amount: String(Math.round(demoSpend("anthropic", d, today) * 100)), currency: "USD" }]
+      }));
+      return new Response(JSON.stringify({ data, has_more: false, next_page: null }));
+    }
+    if (url.hostname === "api.vercel.com") {
+      const start = url.searchParams.get("from").slice(0, 10);
+      const end = addDays(url.searchParams.get("to").slice(0, 10), 1);
+      const lines = days(start, end).map(
+        (d) => JSON.stringify({
+          BilledCost: demoSpend("vercel", d, today),
+          BillingCurrency: "USD",
+          ChargeCategory: "Usage",
+          ChargePeriodStart: `${d}T00:00:00.000Z`,
+          ChargePeriodEnd: `${addDays(d, 1)}T00:00:00.000Z`,
+          ServiceName: "Build Minutes"
+        })
+      );
+      return new Response(lines.join("\n"));
+    }
+    throw new Error(`demo: unexpected request to ${url.hostname}`);
+  });
+}
+async function runDemo(log = console.log, now = /* @__PURE__ */ new Date()) {
+  log("billshock demo: sample data, no API keys, nothing is sent.\n");
+  await runCheck({
+    config: parseConfig(DEMO_CONFIG, {}),
+    statePath: (0, import_node_path2.join)((0, import_node_fs4.mkdtempSync)((0, import_node_path2.join)((0, import_node_os.tmpdir)(), "billshock-demo-")), "state.json"),
+    dryRun: true,
+    now,
+    fetchFn: demoFetch(now),
+    log
+  });
+  log("\nOn a real run, new alerts go to Slack/Discord once and the run exits 1.");
+  log("Set it up for your own accounts: npx billshock init");
+  return 0;
+}
+
+// src/init.ts
+var import_node_fs5 = require("node:fs");
+var import_node_path3 = require("node:path");
 var SAMPLE_CONFIG = `# billshock: spend anomaly alerts. Docs: https://github.com/daichi01278-hash/billshock
 # Secrets are read from env vars via \${VAR}. Providers whose key is unset are skipped.
 
@@ -7947,16 +8036,16 @@ jobs:
 function runInit(cwd, force = false, log = console.log) {
   const files = [
     ["billshock.yml", SAMPLE_CONFIG],
-    [(0, import_node_path2.join)(".github", "workflows", "billshock.yml"), SAMPLE_WORKFLOW]
+    [(0, import_node_path3.join)(".github", "workflows", "billshock.yml"), SAMPLE_WORKFLOW]
   ];
   for (const [rel, content] of files) {
-    const path = (0, import_node_path2.join)(cwd, rel);
-    if ((0, import_node_fs4.existsSync)(path) && !force) {
+    const path = (0, import_node_path3.join)(cwd, rel);
+    if ((0, import_node_fs5.existsSync)(path) && !force) {
       log(`exists, skipped: ${rel} (use --force to overwrite)`);
       continue;
     }
-    (0, import_node_fs4.mkdirSync)((0, import_node_path2.dirname)(path), { recursive: true });
-    (0, import_node_fs4.writeFileSync)(path, content);
+    (0, import_node_fs5.mkdirSync)((0, import_node_path3.dirname)(path), { recursive: true });
+    (0, import_node_fs5.writeFileSync)(path, content);
     log(`created: ${rel}`);
   }
   log("");
@@ -7966,10 +8055,11 @@ function runInit(cwd, force = false, log = console.log) {
 }
 
 // src/cli.ts
-var VERSION = true ? "0.1.0" : "dev";
+var VERSION = true ? "0.2.0" : "dev";
 var HELP = `billshock \u2014 get alerted before a surprise OpenAI / Anthropic / Vercel bill
 
 Usage:
+  billshock demo                 See what alerts look like, using sample data (no keys needed)
   billshock init [--force]       Create billshock.yml and a GitHub Actions workflow
   billshock check [options]      Fetch spend, evaluate rules, send new alerts
 
@@ -8005,6 +8095,8 @@ async function main(argv) {
     return command || values.help ? 0 : 2;
   }
   switch (command) {
+    case "demo":
+      return runDemo();
     case "init":
       return runInit(process.cwd(), values.force);
     case "check": {

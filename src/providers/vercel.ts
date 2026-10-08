@@ -25,10 +25,18 @@ export function parseVercelCharges(jsonl: string, into: DailySpend = new Map()):
   return into;
 }
 
-export async function fetchVercel(token: string, teamId: string | undefined, window: FetchWindow, fetchFn: FetchFn = fetch): Promise<DailySpend> {
+export async function fetchVercel(
+  token: string,
+  teamId: string | undefined,
+  window: FetchWindow,
+  fetchFn: FetchFn = fetch,
+  now: Date = new Date(),
+): Promise<DailySpend> {
+  // Vercel's own CLI and other production clients send `to` = now; a future `to` risks a 400.
+  const to = window.end < now ? window.end : now;
   const url = new URL("https://api.vercel.com/v1/billing/charges");
   url.searchParams.set("from", window.start.toISOString());
-  url.searchParams.set("to", window.end.toISOString());
+  url.searchParams.set("to", to.toISOString());
   if (teamId) url.searchParams.set("teamId", teamId);
   const body = await request(NAME, fetchFn, url.toString(), { Authorization: `Bearer ${token}` });
   return parseVercelCharges(body);

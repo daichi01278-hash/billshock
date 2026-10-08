@@ -23,6 +23,14 @@ ALERT total: on pace for $2567.90 in 2025-10 ($782.40 so far), over the monthly 
 
 ## Quick start
 
+See what the alerts look like first, using sample data (no keys, no network):
+
+```sh
+npx billshock demo
+```
+
+Then set it up for your own accounts:
+
 ```sh
 npx billshock init
 ```
@@ -114,6 +122,7 @@ jobs:
 ## CLI
 
 ```
+billshock demo
 billshock init [--force]
 billshock check [--config billshock.yml] [--state .billshock/state.json] [--dry-run] [--json]
 ```

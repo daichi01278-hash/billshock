@@ -95,4 +95,11 @@ describe("vercel", () => {
     expect(url.searchParams.get("to")).toBe("2025-10-09T00:00:00.000Z");
     expect(url.searchParams.get("teamId")).toBe("team_123");
   });
+
+  it("never sends a `to` in the future", async () => {
+    const { fn, calls } = fakeFetch([{ body: "" }]);
+    const now = new Date("2025-10-08T09:30:00.000Z"); // before window.end (Oct 9 00:00)
+    await fetchVercel("vc_token", undefined, window, fn, now);
+    expect(new URL(calls[0]!.url).searchParams.get("to")).toBe("2025-10-08T09:30:00.000Z");
+  });
 });

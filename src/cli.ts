@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import { runCheck } from "./check.js";
 import { ConfigError, loadConfig } from "./config.js";
+import { runDemo } from "./demo.js";
 import { runInit } from "./init.js";
 
 declare const __VERSION__: string | undefined;
@@ -9,6 +10,7 @@ const VERSION = typeof __VERSION__ === "string" ? __VERSION__ : "dev";
 const HELP = `billshock — get alerted before a surprise OpenAI / Anthropic / Vercel bill
 
 Usage:
+  billshock demo                 See what alerts look like, using sample data (no keys needed)
   billshock init [--force]       Create billshock.yml and a GitHub Actions workflow
   billshock check [options]      Fetch spend, evaluate rules, send new alerts
 
@@ -47,6 +49,8 @@ async function main(argv: string[]): Promise<number> {
   }
 
   switch (command) {
+    case "demo":
+      return runDemo();
     case "init":
       return runInit(process.cwd(), values.force);
     case "check": {

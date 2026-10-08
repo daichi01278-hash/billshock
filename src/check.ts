@@ -49,14 +49,14 @@ export function fetchWindow(config: Config, now: Date): FetchWindow {
   };
 }
 
-function fetchProvider(p: ProviderConfig, window: FetchWindow, fetchFn: FetchFn): Promise<DailySpend> {
+function fetchProvider(p: ProviderConfig, window: FetchWindow, fetchFn: FetchFn, now: Date): Promise<DailySpend> {
   switch (p.name) {
     case "openai":
       return fetchOpenAI(p.credential, window, fetchFn);
     case "anthropic":
       return fetchAnthropic(p.credential, window, fetchFn);
     case "vercel":
-      return fetchVercel(p.credential, p.teamId, window, fetchFn);
+      return fetchVercel(p.credential, p.teamId, window, fetchFn, now);
   }
 }
 
@@ -112,7 +112,7 @@ export async function runCheck(opts: CheckOptions): Promise<CheckResult> {
   }
 
   const window = fetchWindow(config, now);
-  const settled = await Promise.allSettled(active.map((p) => fetchProvider(p, window, fetchFn)));
+  const settled = await Promise.allSettled(active.map((p) => fetchProvider(p, window, fetchFn, now)));
 
   const alerts: Alert[] = [];
   const summary: SummaryRow[] = [];
