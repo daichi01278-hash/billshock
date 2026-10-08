@@ -1,0 +1,42 @@
+name: Numbers don't match my dashboard
+description: billshock reports different spend than the provider's billing page, or fails to parse a response.
+labels: [parser]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Parsers in v0.1 follow each provider's documented schema, so real-world reports like this are the fastest way to fix them.
+        **Never paste API keys, tokens or webhook URLs.**
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options: [OpenAI, Anthropic, Vercel]
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: billshock output
+      description: Output of `npx billshock check --dry-run` (the summary table, alerts and errors).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What the provider dashboard shows
+      description: For example, "Vercel usage page says $12.40 for Oct 7, billshock says $0.00".
+    validations:
+      required: true
+  - type: textarea
+    id: response
+    attributes:
+      label: Redacted API response (optional, very helpful)
+      description: One bucket or line of the raw response, with IDs and names replaced by placeholders.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: billshock version
+      description: Output of `npx billshock --version`

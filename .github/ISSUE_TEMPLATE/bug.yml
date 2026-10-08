@@ -1,0 +1,27 @@
+name: Bug report
+description: Something else is broken (config, alerts, GitHub Action, CLI).
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "**Never paste API keys, tokens or webhook URLs.**"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: billshock.yml (secrets removed)
+      render: yaml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output or workflow log
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: billshock version

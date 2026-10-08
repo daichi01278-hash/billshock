@@ -132,7 +132,11 @@ Run locally with `OPENAI_ADMIN_KEY=… npx billshock check --dry-run`.
 
 Provider cost data can lag by a few hours, so "today" is a lower bound.
 
-v0.1 parsers follow each provider's documented schema. If `billshock check --dry-run` shows numbers that don't match your dashboard, please open an issue with the provider name and the (redacted) response shape.
+v0.1 parsers follow each provider's documented schema. If `billshock check --dry-run` shows numbers that don't match your dashboard, please [report it](https://github.com/daichi01278-hash/billshock/issues/new?template=numbers-mismatch.yml) with the provider name and the (redacted) response shape.
+
+## Hosted version
+
+Don't want to manage admin keys in CI? A hosted billshock (no workflow, spend history, email/SMS, more providers) is in the works. [Join the waitlist](https://billshock-1el.pages.dev/#waitlist).
 
 ## License
 

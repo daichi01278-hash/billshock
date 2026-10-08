@@ -1,0 +1,19 @@
+name: Provider request
+description: Ask for a new provider (AWS, GCP, Supabase, Cloudflare, Twilio, ...).
+labels: [provider-request]
+body:
+  - type: input
+    id: provider
+    attributes:
+      label: Provider
+    validations:
+      required: true
+  - type: textarea
+    id: story
+    attributes:
+      label: What surprised you?
+      description: What kind of spike would you want to catch? (For example, "egress jumped 20x after a bot crawl".)
+  - type: input
+    id: api
+    attributes:
+      label: Billing/usage API docs (if you know them)
