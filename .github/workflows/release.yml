@@ -17,7 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24 # ships npm 11, which Trusted Publishing requires (>= 11.5.1)
-          registry-url: https://registry.npmjs.org
+          # No registry-url: it makes setup-node inject a placeholder NODE_AUTH_TOKEN,
+          # which npm then uses instead of the OIDC Trusted Publishing exchange.
           cache: npm
       - run: npm install -g npm@^11.5.1
       - run: npm ci
