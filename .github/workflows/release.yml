@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: write
-  id-token: write # npm provenance
+  id-token: write # npm Trusted Publishing (OIDC) and provenance; no npm token needed
 
 jobs:
   publish:
@@ -16,15 +16,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24 # ships npm 11, which Trusted Publishing requires (>= 11.5.1)
           registry-url: https://registry.npmjs.org
           cache: npm
+      - run: npm install -g npm@^11.5.1
       - run: npm ci
       - name: Check tag matches package.json
         run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public
       - name: Move major tag
         run: |
           major="${GITHUB_REF_NAME%%.*}"
