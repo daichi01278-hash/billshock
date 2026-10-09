@@ -7441,10 +7441,10 @@ var HINTS = {
   404: "endpoint not found; check the team/organization id",
   429: "rate limited; run less often"
 };
-async function request(provider, fetchFn, url, headers) {
+async function request(provider, fetchFn, url, headers, init = {}) {
   let res;
   try {
-    res = await fetchFn(url, { headers, signal: AbortSignal.timeout(3e4) });
+    res = await fetchFn(url, { ...init, headers, signal: AbortSignal.timeout(3e4) });
   } catch (err) {
     throw new ProviderError(provider, `request failed: ${err.message}`);
   }
@@ -7504,12 +7504,52 @@ async function fetchAnthropic(apiKey, window, fetchFn = fetch) {
   return daily;
 }
 
+// src/providers/cursor.ts
+var NAME2 = "cursor";
+var URL_EVENTS = "https://api.cursor.com/teams/filtered-usage-events";
+var PAGE_SIZE = 1e3;
+var MAX_PAGES2 = 100;
+var CHUNK_MS = 30 * 864e5;
+function parseCursorUsageEvents(page, into) {
+  const p = page;
+  if (!p || !Array.isArray(p.usageEvents)) throw new ProviderError(NAME2, "unexpected response shape (no usageEvents array)");
+  for (const e of p.usageEvents) {
+    if (e.isChargeable === false) continue;
+    const ms = toNumber(e.timestamp);
+    if (!ms) continue;
+    const key = new Date(ms).toISOString().slice(0, 10);
+    into.set(key, (into.get(key) ?? 0) + toNumber(e.chargedCents) / 100);
+  }
+  return p;
+}
+async function fetchCursor(apiKey, window, fetchFn = fetch, now = /* @__PURE__ */ new Date()) {
+  const daily = /* @__PURE__ */ new Map();
+  const headers = {
+    Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`,
+    "Content-Type": "application/json"
+  };
+  const last = Math.min(window.end.getTime(), now.getTime()) - 1;
+  for (let start = window.start.getTime(); start <= last; start += CHUNK_MS) {
+    const end = Math.min(start + CHUNK_MS - 1, last);
+    for (let page = 1; ; page++) {
+      if (page > MAX_PAGES2) throw new ProviderError(NAME2, `more than ${MAX_PAGES2 * PAGE_SIZE} usage events in 30 days; totals would be incomplete`);
+      const body = await request(NAME2, fetchFn, URL_EVENTS, headers, {
+        method: "POST",
+        body: JSON.stringify({ startDate: start, endDate: end, page, pageSize: PAGE_SIZE })
+      });
+      const p = parseCursorUsageEvents(parseJson(NAME2, body), daily);
+      if (!p.pagination?.hasNextPage) break;
+    }
+  }
+  return daily;
+}
+
 // src/providers/openai.ts
-var NAME2 = "openai";
-var MAX_PAGES2 = 10;
+var NAME3 = "openai";
+var MAX_PAGES3 = 10;
 function parseOpenAICosts(page, into) {
   const p = page;
-  if (!p || !Array.isArray(p.data)) throw new ProviderError(NAME2, "unexpected response shape (no data array)");
+  if (!p || !Array.isArray(p.data)) throw new ProviderError(NAME3, "unexpected response shape (no data array)");
   for (const bucket of p.data) {
     if (typeof bucket.start_time !== "number") continue;
     const key = dateKey(new Date(bucket.start_time * 1e3));
@@ -7528,11 +7568,11 @@ async function fetchOpenAI(apiKey, window, fetchFn = fetch) {
   base.searchParams.set("bucket_width", "1d");
   base.searchParams.set("limit", "180");
   let cursor;
-  for (let i = 0; i < MAX_PAGES2; i++) {
+  for (let i = 0; i < MAX_PAGES3; i++) {
     const url = new URL(base);
     if (cursor) url.searchParams.set("page", cursor);
-    const body = await request(NAME2, fetchFn, url.toString(), { Authorization: `Bearer ${apiKey}` });
-    const page = parseOpenAICosts(parseJson(NAME2, body), daily);
+    const body = await request(NAME3, fetchFn, url.toString(), { Authorization: `Bearer ${apiKey}` });
+    const page = parseOpenAICosts(parseJson(NAME3, body), daily);
     if (!page.has_more || !page.next_page) break;
     cursor = page.next_page;
   }
@@ -7540,7 +7580,7 @@ async function fetchOpenAI(apiKey, window, fetchFn = fetch) {
 }
 
 // src/providers/vercel.ts
-var NAME3 = "vercel";
+var NAME4 = "vercel";
 function parseVercelCharges(jsonl, into = /* @__PURE__ */ new Map()) {
   const lines = jsonl.split("\n");
   for (const [i, raw] of lines.entries()) {
@@ -7550,7 +7590,7 @@ function parseVercelCharges(jsonl, into = /* @__PURE__ */ new Map()) {
     try {
       row = JSON.parse(line);
     } catch {
-      throw new ProviderError(NAME3, `invalid JSONL on line ${i + 1}: ${line.slice(0, 120)}`);
+      throw new ProviderError(NAME4, `invalid JSONL on line ${i + 1}: ${line.slice(0, 120)}`);
     }
     if (row.ChargeCategory !== "Usage" || typeof row.ChargePeriodStart !== "string") continue;
     const key = row.ChargePeriodStart.slice(0, 10);
@@ -7564,7 +7604,7 @@ async function fetchVercel(token, teamId, window, fetchFn = fetch, now = /* @__P
   url.searchParams.set("from", window.start.toISOString());
   url.searchParams.set("to", to.toISOString());
   if (teamId) url.searchParams.set("teamId", teamId);
-  const body = await request(NAME3, fetchFn, url.toString(), { Authorization: `Bearer ${token}` });
+  const body = await request(NAME4, fetchFn, url.toString(), { Authorization: `Bearer ${token}` });
   return parseVercelCharges(body);
 }
 
@@ -7699,6 +7739,8 @@ function fetchProvider(p, window, fetchFn, now) {
       return fetchAnthropic(p.credential, window, fetchFn);
     case "vercel":
       return fetchVercel(p.credential, p.teamId, window, fetchFn, now);
+    case "cursor":
+      return fetchCursor(p.credential, window, fetchFn, now);
   }
 }
 function summarize(scope, daily, rules, now) {
@@ -7805,7 +7847,7 @@ async function runCheck(opts) {
 // src/config.ts
 var import_node_fs3 = require("node:fs");
 var import_yaml = __toESM(require_dist(), 1);
-var PROVIDERS = ["openai", "anthropic", "vercel"];
+var PROVIDERS = ["openai", "anthropic", "vercel", "cursor"];
 var ConfigError = class extends Error {
 };
 var RULE_KEYS = ["dailyCap", "spikeMultiplier", "spikeMinAmount", "spikeBaselineDays", "monthlyBudget"];
@@ -7882,6 +7924,7 @@ providers:
   openai: { apiKey: demo }
   anthropic: { apiKey: demo }
   vercel: { token: demo }
+  cursor: { apiKey: demo }
 total:
   monthlyBudget: 1000
 `;
@@ -7892,7 +7935,7 @@ function wobble(key, provider) {
 }
 function demoSpend(provider, key, today) {
   const yesterday = addDays(today, -1);
-  const base = { openai: 4.9, anthropic: 5.7, vercel: 0.42 }[provider];
+  const base = { openai: 4.9, anthropic: 5.7, vercel: 0.42, cursor: 3.1 }[provider];
   if (key === yesterday && provider === "openai") return 41.2;
   if (key === yesterday && provider === "vercel") return 659.08;
   const partial = key === today ? 0.35 : 1;
@@ -7905,7 +7948,7 @@ function days(start, endExclusive) {
 }
 function demoFetch(now) {
   const today = dateKey(now);
-  return (async (input) => {
+  return (async (input, init) => {
     const url = new URL(input);
     if (url.hostname === "api.openai.com") {
       const start = dateKey(new Date(Number(url.searchParams.get("start_time")) * 1e3));
@@ -7943,6 +7986,11 @@ function demoFetch(now) {
       );
       return new Response(lines.join("\n"));
     }
+    if (url.hostname === "api.cursor.com") {
+      const { startDate, endDate } = JSON.parse(String(init?.body));
+      const usageEvents = days(dateKey(new Date(startDate)), addDays(dateKey(new Date(endDate)), 1)).map((d) => ({ timestamp: String(Date.parse(`${d}T12:00:00Z`)), isChargeable: true, chargedCents: Math.round(demoSpend("cursor", d, today) * 100) })).filter((e) => Number(e.timestamp) >= startDate && Number(e.timestamp) <= endDate);
+      return new Response(JSON.stringify({ usageEvents, pagination: { hasNextPage: false } }));
+    }
     throw new Error(`demo: unexpected request to ${url.hostname}`);
   });
 }
@@ -7975,6 +8023,8 @@ providers:
   vercel:
     token: \${VERCEL_TOKEN}             # vercel.com/account/tokens (needs access to the team's billing)
     teamId: \${VERCEL_TEAM_ID}
+  cursor:
+    apiKey: \${CURSOR_ADMIN_KEY}        # Team admin key: cursor.com/dashboard \u2192 API Keys (Teams/Enterprise)
     # rules:                           # per-provider overrides
     #   dailyCap: 20
 
@@ -8024,6 +8074,7 @@ jobs:
           ANTHROPIC_ADMIN_KEY: \${{ secrets.ANTHROPIC_ADMIN_KEY }}
           VERCEL_TOKEN: \${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID: \${{ vars.VERCEL_TEAM_ID }}
+          CURSOR_ADMIN_KEY: \${{ secrets.CURSOR_ADMIN_KEY }}
           DISCORD_WEBHOOK_URL: \${{ secrets.DISCORD_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL: \${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -8055,7 +8106,7 @@ function runInit(cwd, force = false, log = console.log) {
 }
 
 // src/cli.ts
-var VERSION = true ? "0.2.0" : "dev";
+var VERSION = true ? "0.3.0" : "dev";
 var HELP = `billshock \u2014 get alerted before a surprise OpenAI / Anthropic / Vercel bill
 
 Usage:

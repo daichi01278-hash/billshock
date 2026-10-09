@@ -13,10 +13,16 @@ const HINTS: Record<number, string> = {
   429: "rate limited; run less often",
 };
 
-export async function request(provider: string, fetchFn: FetchFn, url: string, headers: Record<string, string>): Promise<string> {
+export async function request(
+  provider: string,
+  fetchFn: FetchFn,
+  url: string,
+  headers: Record<string, string>,
+  init: { method?: string; body?: string } = {},
+): Promise<string> {
   let res: Response;
   try {
-    res = await fetchFn(url, { headers, signal: AbortSignal.timeout(30_000) });
+    res = await fetchFn(url, { ...init, headers, signal: AbortSignal.timeout(30_000) });
   } catch (err) {
     throw new ProviderError(provider, `request failed: ${(err as Error).message}`);
   }

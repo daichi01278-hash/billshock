@@ -16,6 +16,7 @@ providers:
   openai: { apiKey: demo }
   anthropic: { apiKey: demo }
   vercel: { token: demo }
+  cursor: { apiKey: demo }
 total:
   monthlyBudget: 1000
 `;
@@ -28,9 +29,9 @@ function wobble(key: string, provider: string): number {
 }
 
 /** Normal spend with a runaway day yesterday on OpenAI and Vercel. */
-export function demoSpend(provider: "openai" | "anthropic" | "vercel", key: string, today: string): number {
+export function demoSpend(provider: "openai" | "anthropic" | "vercel" | "cursor", key: string, today: string): number {
   const yesterday = addDays(today, -1);
-  const base = { openai: 4.9, anthropic: 5.7, vercel: 0.42 }[provider];
+  const base = { openai: 4.9, anthropic: 5.7, vercel: 0.42, cursor: 3.1 }[provider];
   if (key === yesterday && provider === "openai") return 41.2;
   if (key === yesterday && provider === "vercel") return 659.08;
   const partial = key === today ? 0.35 : 1; // today is still in progress
@@ -45,7 +46,7 @@ function days(start: string, endExclusive: string): string[] {
 
 export function demoFetch(now: Date): FetchFn {
   const today = dateKey(now);
-  return (async (input: string) => {
+  return (async (input: string, init?: RequestInit) => {
     const url = new URL(input);
     if (url.hostname === "api.openai.com") {
       const start = dateKey(new Date(Number(url.searchParams.get("start_time")) * 1000));
@@ -82,6 +83,14 @@ export function demoFetch(now: Date): FetchFn {
         }),
       );
       return new Response(lines.join("\n"));
+    }
+    if (url.hostname === "api.cursor.com") {
+      const { startDate, endDate } = JSON.parse(String(init?.body)) as { startDate: number; endDate: number };
+      // One chargeable event per day at 12:00 UTC, inside the requested inclusive range.
+      const usageEvents = days(dateKey(new Date(startDate)), addDays(dateKey(new Date(endDate)), 1))
+        .map((d) => ({ timestamp: String(Date.parse(`${d}T12:00:00Z`)), isChargeable: true, chargedCents: Math.round(demoSpend("cursor", d, today) * 100) }))
+        .filter((e) => Number(e.timestamp) >= startDate && Number(e.timestamp) <= endDate);
+      return new Response(JSON.stringify({ usageEvents, pagination: { hasNextPage: false } }));
     }
     throw new Error(`demo: unexpected request to ${url.hostname}`);
   }) as unknown as FetchFn;

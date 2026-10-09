@@ -3,12 +3,12 @@ import { parse } from "yaml";
 import { DEFAULT_RULES } from "./rules.js";
 import type { Rules } from "./types.js";
 
-export const PROVIDERS = ["openai", "anthropic", "vercel"] as const;
+export const PROVIDERS = ["openai", "anthropic", "vercel", "cursor"] as const;
 export type ProviderName = (typeof PROVIDERS)[number];
 
 export interface ProviderConfig {
   name: ProviderName;
-  /** Admin API key (OpenAI / Anthropic) or access token (Vercel). Empty when the env var is unset. */
+  /** Admin API key (OpenAI / Anthropic / Cursor) or access token (Vercel). Empty when the env var is unset. */
   credential: string;
   teamId?: string;
   rules: Rules;

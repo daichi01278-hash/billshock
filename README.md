@@ -1,6 +1,6 @@
 # billshock
 
-**Get alerted before a surprise OpenAI, Anthropic, or Vercel bill.**
+**Get alerted before a surprise OpenAI, Anthropic, Vercel, or Cursor bill.**
 
 billshock checks your provider billing APIs every hour from your own GitHub Actions. When spend spikes, crosses a daily cap, or is on pace to blow your monthly budget, it posts to Discord or Slack.
 
@@ -11,14 +11,15 @@ billshock checks your provider billing APIs every hour from your own GitHub Acti
 
 ```
 scope      today  yesterday  7d avg  month-to-date  projected
-openai     $3.10     $41.20   $4.95         $79.80    $261.90
-anthropic  $0.80      $6.10   $5.70         $41.00    $134.40
-vercel     $0.00    $659.08   $0.42        $661.60   $2171.60
-total      $3.90    $706.38  $11.07        $782.40   $2567.90
-ALERT openai: $41.20 spent on 2025-10-07, 8.3x the 7-day average of $4.95
-ALERT vercel: $659.08 spent on 2025-10-07, 1569.2x the 7-day average of $0.42
-ALERT total: $706.38 spent on 2025-10-07, 63.8x the 7-day average of $11.07
-ALERT total: on pace for $2567.90 in 2025-10 ($782.40 so far), over the monthly budget of $500.00
+openai     $1.78     $41.20   $4.89         $77.24    $282.73
+anthropic  $2.01      $5.20   $5.64         $46.72    $171.01
+vercel     $0.12    $659.08   $0.42        $662.12   $2423.60
+cursor     $0.00      $3.03   $3.08         $24.60     $90.04
+total      $3.91    $708.51  $14.04        $810.68   $2967.38
+ALERT openai: $41.20 spent on 2026-10-08, 8.4x the 7-day average of $4.89
+ALERT vercel: $659.08 spent on 2026-10-08, 1580.0x the 7-day average of $0.42
+ALERT total: $708.51 spent on 2026-10-08, 50.5x the 7-day average of $14.04
+ALERT total: on pace for $2967.38 in 2026-10 ($810.68 so far), over the monthly budget of $1000.00
 ```
 
 ## Quick start
@@ -44,6 +45,7 @@ This creates `billshock.yml` and `.github/workflows/billshock.yml` (an hourly sc
    | `OPENAI_ADMIN_KEY` | [OpenAI admin keys](https://platform.openai.com/settings/organization/admin-keys). A regular API key will **not** work. |
    | `ANTHROPIC_ADMIN_KEY` | [Anthropic admin keys](https://console.anthropic.com/settings/admin-keys) (`sk-ant-admin…`). Requires an organization account. |
    | `VERCEL_TOKEN` | [Vercel tokens](https://vercel.com/account/tokens). The token's user needs a role that can read team billing (Owner, Member, Developer, Billing…). |
+   | `CURSOR_ADMIN_KEY` | Cursor team admin API key: [cursor.com/dashboard](https://cursor.com/dashboard) → API Keys. Teams and Enterprise plans only. |
    | `DISCORD_WEBHOOK_URL` / `SLACK_WEBHOOK_URL` | Channel settings → Integrations → Webhooks / [Slack incoming webhooks](https://api.slack.com/messaging/webhooks) |
 
    Add `VERCEL_TEAM_ID` as a repo **variable** if your project belongs to a team.
@@ -77,6 +79,8 @@ providers:
   vercel:
     token: ${VERCEL_TOKEN}
     teamId: ${VERCEL_TEAM_ID}
+  cursor:
+    apiKey: ${CURSOR_ADMIN_KEY}
 
 rules:
   spikeMultiplier: 3
@@ -115,6 +119,7 @@ jobs:
           ANTHROPIC_ADMIN_KEY: ${{ secrets.ANTHROPIC_ADMIN_KEY }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          CURSOR_ADMIN_KEY: ${{ secrets.CURSOR_ADMIN_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 ```
@@ -138,10 +143,11 @@ Run locally with `OPENAI_ADMIN_KEY=… npx billshock check --dry-run`.
 | OpenAI | `GET /v1/organization/costs` | Daily buckets, all projects |
 | Anthropic | `GET /v1/organizations/cost_report` | Daily buckets, all workspaces |
 | Vercel | `GET /v1/billing/charges` (FOCUS 1.3) | Counts only `Usage` charges. Plan purchases, credits and tax are excluded. |
+| Cursor | `POST /teams/filtered-usage-events` (Admin API) | Sums `chargedCents` of chargeable events, i.e. on-demand spend beyond the seats' included usage. Seat fees are not included. Queried in 30-day chunks; very large teams (>100k events per 30 days) get an error rather than a partial total. |
 
 Provider cost data can lag by a few hours, so "today" is a lower bound.
 
-v0.1 parsers follow each provider's documented schema. If `billshock check --dry-run` shows numbers that don't match your dashboard, please [report it](https://github.com/daichi01278-hash/billshock/issues/new?template=numbers-mismatch.yml) with the provider name and the (redacted) response shape.
+Parsers follow each provider's documented schema. If `billshock check --dry-run` shows numbers that don't match your dashboard, please [report it](https://github.com/daichi01278-hash/billshock/issues/new?template=numbers-mismatch.yml) with the provider name and the (redacted) response shape.
 
 ## Hosted version
 

@@ -3,6 +3,7 @@ import type { Config, ProviderConfig } from "./config.js";
 import { addDays, dateKey, startOfUtcMonth } from "./dates.js";
 import { notify } from "./notify.js";
 import { fetchAnthropic } from "./providers/anthropic.js";
+import { fetchCursor } from "./providers/cursor.js";
 import { fetchOpenAI } from "./providers/openai.js";
 import { fetchVercel } from "./providers/vercel.js";
 import { DEFAULT_RULES, evaluate, monthToDate, projectMonthEnd, spendOn, sumDaily, trailingAverage, usd } from "./rules.js";
@@ -57,6 +58,8 @@ function fetchProvider(p: ProviderConfig, window: FetchWindow, fetchFn: FetchFn,
       return fetchAnthropic(p.credential, window, fetchFn);
     case "vercel":
       return fetchVercel(p.credential, p.teamId, window, fetchFn, now);
+    case "cursor":
+      return fetchCursor(p.credential, window, fetchFn, now);
   }
 }
 

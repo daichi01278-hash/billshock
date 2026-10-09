@@ -1,0 +1,32 @@
+{
+  "totalUsageEventsCount": 4,
+  "pagination": { "numPages": 2, "currentPage": 2, "pageSize": 1000, "hasNextPage": false, "hasPreviousPage": true },
+  "usageEvents": [
+    {
+      "timestamp": "1759881600000",
+      "userEmail": "developer@company.com",
+      "model": "gpt-5",
+      "kind": "Usage-based",
+      "maxMode": false,
+      "requestsCosts": 2,
+      "isTokenBasedCall": true,
+      "isChargeable": true,
+      "isHeadless": true,
+      "tokenUsage": { "inputTokens": 5805, "outputTokens": 311, "cacheWriteTokens": 11964, "cacheReadTokens": 0, "totalCents": 40.167, "discountPercentOff": 10 },
+      "chargedCents": 37.33
+    },
+    {
+      "timestamp": "1759795200000",
+      "userEmail": "developer@company.com",
+      "model": "claude-4.5-sonnet",
+      "kind": "Usage-based",
+      "maxMode": false,
+      "requestsCosts": 1,
+      "isTokenBasedCall": true,
+      "isChargeable": true,
+      "isHeadless": false,
+      "chargedCents": 100
+    }
+  ],
+  "period": { "startDate": 1759276800000, "endDate": 1759967999999 }
+}

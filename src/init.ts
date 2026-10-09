@@ -12,6 +12,8 @@ providers:
   vercel:
     token: \${VERCEL_TOKEN}             # vercel.com/account/tokens (needs access to the team's billing)
     teamId: \${VERCEL_TEAM_ID}
+  cursor:
+    apiKey: \${CURSOR_ADMIN_KEY}        # Team admin key: cursor.com/dashboard → API Keys (Teams/Enterprise)
     # rules:                           # per-provider overrides
     #   dailyCap: 20
 
@@ -62,6 +64,7 @@ jobs:
           ANTHROPIC_ADMIN_KEY: \${{ secrets.ANTHROPIC_ADMIN_KEY }}
           VERCEL_TOKEN: \${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID: \${{ vars.VERCEL_TEAM_ID }}
+          CURSOR_ADMIN_KEY: \${{ secrets.CURSOR_ADMIN_KEY }}
           DISCORD_WEBHOOK_URL: \${{ secrets.DISCORD_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL: \${{ secrets.SLACK_WEBHOOK_URL }}
 

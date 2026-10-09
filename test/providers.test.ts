@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { fetchAnthropic, parseAnthropicCostReport } from "../src/providers/anthropic.js";
+import { fetchCursor, parseCursorUsageEvents } from "../src/providers/cursor.js";
 import { fetchOpenAI, parseOpenAICosts } from "../src/providers/openai.js";
 import { fetchVercel, parseVercelCharges } from "../src/providers/vercel.js";
 import type { DailySpend, FetchFn } from "../src/types.js";
@@ -12,9 +13,9 @@ const json = (name: string) => JSON.parse(fixture(name));
 const window = { start: new Date("2025-10-01T00:00:00Z"), end: new Date("2025-10-09T00:00:00Z") };
 
 function fakeFetch(responses: Array<{ status?: number; body: string }>) {
-  const calls: Array<{ url: string; headers: Record<string, string> }> = [];
+  const calls: Array<{ url: string; headers: Record<string, string>; method?: string; body?: string }> = [];
   const fn = (async (url: string, init?: RequestInit) => {
-    calls.push({ url, headers: init?.headers as Record<string, string> });
+    calls.push({ url, headers: init?.headers as Record<string, string>, method: init?.method, body: init?.body as string | undefined });
     const r = responses.shift();
     if (!r) throw new Error("unexpected request");
     return new Response(r.body, { status: r.status ?? 200 });
@@ -101,5 +102,56 @@ describe("vercel", () => {
     const now = new Date("2025-10-08T09:30:00.000Z"); // before window.end (Oct 9 00:00)
     await fetchVercel("vc_token", undefined, window, fn, now);
     expect(new URL(calls[0]!.url).searchParams.get("to")).toBe("2025-10-08T09:30:00.000Z");
+  });
+});
+
+describe("cursor", () => {
+  it("sums chargeable events per UTC day in USD and skips included usage", () => {
+    const daily: DailySpend = new Map();
+    parseCursorUsageEvents(json("cursor_usage_events_p1.json"), daily);
+    parseCursorUsageEvents(json("cursor_usage_events_p2.json"), daily);
+    // 2025-10-07: 21.36232 + 100 cents.
+    expect(daily.get("2025-10-07")).toBeCloseTo(1.2136232);
+    // The only 2025-10-06 event is "Included in Business" (isChargeable: false).
+    expect(daily.has("2025-10-06")).toBe(false);
+    // 1759881600000 is exactly 2025-10-08T00:00:00Z.
+    expect(daily.get("2025-10-08")).toBeCloseTo(0.3733);
+  });
+
+  it("rejects unexpected shapes", () => {
+    expect(() => parseCursorUsageEvents({ error: "x" }, new Map())).toThrow(/unexpected response shape/);
+  });
+
+  it("POSTs inclusive epoch-ms bounds with Basic auth and follows pages", async () => {
+    const { fn, calls } = fakeFetch([
+      { body: fixture("cursor_usage_events_p1.json") },
+      { body: fixture("cursor_usage_events_p2.json") },
+    ]);
+    const now = new Date("2025-10-08T09:30:00.000Z");
+    const daily = await fetchCursor("key_test", window, fn, now);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]!.url).toBe("https://api.cursor.com/teams/filtered-usage-events");
+    expect(calls[0]!.method).toBe("POST");
+    expect(calls[0]!.headers.Authorization).toBe(`Basic ${Buffer.from("key_test:").toString("base64")}`);
+    expect(JSON.parse(calls[0]!.body!)).toEqual({ startDate: 1759276800000, endDate: now.getTime() - 1, page: 1, pageSize: 1000 });
+    expect(JSON.parse(calls[1]!.body!).page).toBe(2);
+    expect(daily.get("2025-10-08")).toBeCloseTo(0.3733);
+  });
+
+  it("splits windows longer than 30 days", async () => {
+    const empty = JSON.stringify({ usageEvents: [], pagination: { hasNextPage: false } });
+    const { fn, calls } = fakeFetch([{ body: empty }, { body: empty }]);
+    const long = { start: new Date("2025-09-01T00:00:00Z"), end: new Date("2025-10-09T00:00:00Z") };
+    await fetchCursor("k", long, fn, new Date("2025-10-10T00:00:00Z"));
+    const bodies = calls.map((c) => JSON.parse(c.body!));
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0].endDate - bodies[0].startDate).toBe(30 * 86_400_000 - 1);
+    expect(bodies[1].startDate).toBe(bodies[0].endDate + 1);
+    expect(bodies[1].endDate).toBe(long.end.getTime() - 1);
+  });
+
+  it("explains 401s", async () => {
+    const { fn } = fakeFetch([{ status: 401, body: '{"error":"unauthorized"}' }]);
+    await expect(fetchCursor("bad", window, fn, new Date("2025-10-08T00:00:00Z"))).rejects.toThrow(/cursor: HTTP 401/);
   });
 });

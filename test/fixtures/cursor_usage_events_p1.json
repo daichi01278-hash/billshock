@@ -1,0 +1,33 @@
+{
+  "totalUsageEventsCount": 4,
+  "pagination": { "numPages": 2, "currentPage": 1, "pageSize": 1000, "hasNextPage": true, "hasPreviousPage": false },
+  "usageEvents": [
+    {
+      "timestamp": "1759795225854",
+      "userEmail": "developer@company.com",
+      "model": "claude-4.5-sonnet",
+      "kind": "Usage-based",
+      "maxMode": true,
+      "requestsCosts": 5,
+      "isTokenBasedCall": true,
+      "isChargeable": true,
+      "isHeadless": false,
+      "tokenUsage": { "inputTokens": 126, "outputTokens": 450, "cacheWriteTokens": 6112, "cacheReadTokens": 11964, "totalCents": 20.18232 },
+      "chargedCents": 21.36232,
+      "cursorTokenFee": 1.18
+    },
+    {
+      "timestamp": "1759795173824",
+      "userEmail": "admin@company.com",
+      "model": "claude-4-sonnet-thinking",
+      "kind": "Included in Business",
+      "maxMode": true,
+      "requestsCosts": 1.4,
+      "isTokenBasedCall": false,
+      "isChargeable": false,
+      "isHeadless": false,
+      "chargedCents": 8
+    }
+  ],
+  "period": { "startDate": 1759276800000, "endDate": 1759967999999 }
+}

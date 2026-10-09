@@ -1,5 +1,5 @@
 name: billshock
-description: Alert on OpenAI / Anthropic / Vercel spend anomalies before the invoice arrives.
+description: Alert on OpenAI / Anthropic / Vercel / Cursor spend anomalies before the invoice arrives.
 branding:
   icon: alert-triangle
   color: red

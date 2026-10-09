@@ -9,11 +9,12 @@ describe("demo", () => {
     const out = logs.join("\n");
     expect(code).toBe(0);
     expect(out).toMatch(/^scope\s+today\s+yesterday/m);
-    for (const scope of ["openai", "anthropic", "vercel", "total"]) expect(out).toMatch(new RegExp(`^${scope}\\s`, "m"));
+    for (const scope of ["openai", "anthropic", "vercel", "cursor", "total"]) expect(out).toMatch(new RegExp(`^${scope}\\s`, "m"));
     expect(out).toContain("ALERT openai: $41.20 spent on 2026-10-14");
     expect(out).toContain("ALERT vercel: $659.08 spent on 2026-10-14");
     expect(out).toMatch(/ALERT total: on pace for \$\d+\.\d{2} in 2026-10/);
     expect(out).not.toContain("ALERT anthropic");
+    expect(out).not.toContain("ALERT cursor");
     expect(out).not.toContain("ERROR");
   });
 
