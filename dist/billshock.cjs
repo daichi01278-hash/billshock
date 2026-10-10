@@ -8106,7 +8106,7 @@ function runInit(cwd, force = false, log = console.log) {
 }
 
 // src/cli.ts
-var VERSION = true ? "0.3.0" : "dev";
+var VERSION = true ? "0.3.1" : "dev";
 var HELP = `billshock \u2014 get alerted before a surprise OpenAI / Anthropic / Vercel bill
 
 Usage:

@@ -1,4 +1,4 @@
-name: billshock
+name: Billshock AI Spend Alerts
 description: Alert on OpenAI / Anthropic / Vercel / Cursor spend anomalies before the invoice arrives.
 branding:
   icon: alert-triangle
