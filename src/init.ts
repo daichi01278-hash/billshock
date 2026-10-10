@@ -91,7 +91,7 @@ export function runInit(cwd: string, force = false, log: (line: string) => void 
     log(`created: ${rel}`);
   }
   log("");
-  log("Next: add OPENAI_ADMIN_KEY / ANTHROPIC_ADMIN_KEY / VERCEL_TOKEN and a webhook URL as repo secrets,");
+  log("Next: add the keys you use (OPENAI_ADMIN_KEY / ANTHROPIC_ADMIN_KEY / VERCEL_TOKEN / CURSOR_ADMIN_KEY) and a webhook URL as repo secrets,");
   log("then run the workflow once from the Actions tab (or `billshock check --dry-run` locally).");
   return 0;
 }

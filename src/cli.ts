@@ -7,7 +7,7 @@ import { runInit } from "./init.js";
 declare const __VERSION__: string | undefined;
 const VERSION = typeof __VERSION__ === "string" ? __VERSION__ : "dev";
 
-const HELP = `billshock — get alerted before a surprise OpenAI / Anthropic / Vercel bill
+const HELP = `billshock — get alerted before a surprise OpenAI / Anthropic / Vercel / Cursor bill
 
 Usage:
   billshock demo                 See what alerts look like, using sample data (no keys needed)

@@ -1,6 +1,6 @@
 {
   "name": "billshock",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Get alerted before a surprise OpenAI / Anthropic / Vercel / Cursor bill. Spend anomaly alerts that run in your own GitHub Actions.",
   "license": "MIT",
   "repository": {

@@ -8100,14 +8100,14 @@ function runInit(cwd, force = false, log = console.log) {
     log(`created: ${rel}`);
   }
   log("");
-  log("Next: add OPENAI_ADMIN_KEY / ANTHROPIC_ADMIN_KEY / VERCEL_TOKEN and a webhook URL as repo secrets,");
+  log("Next: add the keys you use (OPENAI_ADMIN_KEY / ANTHROPIC_ADMIN_KEY / VERCEL_TOKEN / CURSOR_ADMIN_KEY) and a webhook URL as repo secrets,");
   log("then run the workflow once from the Actions tab (or `billshock check --dry-run` locally).");
   return 0;
 }
 
 // src/cli.ts
-var VERSION = true ? "0.3.1" : "dev";
-var HELP = `billshock \u2014 get alerted before a surprise OpenAI / Anthropic / Vercel bill
+var VERSION = true ? "0.3.2" : "dev";
+var HELP = `billshock \u2014 get alerted before a surprise OpenAI / Anthropic / Vercel / Cursor bill
 
 Usage:
   billshock demo                 See what alerts look like, using sample data (no keys needed)
